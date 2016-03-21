@@ -1,0 +1,525 @@
+\documentclass[english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+ 
+\urlstyle{same}
+\usepackage[left=2.5cm,top=3cm,right=2.5cm,bottom=3cm,bindingoffset=0.5cm]{geometry}
+
+
+\usepackage{babel}
+\usepackage{amsmath,amsfonts,amssymb,amsthm,epsfig,epstopdf,titling,url,array}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tblr,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+\DeclareMathOperator{\tr}{trace}
+\DeclareMathOperator{\e}{e}
+\DeclareMathOperator{\Pn}{Poisson}
+\DeclareMathOperator{\Bn}{Bernoulli}
+
+
+\theoremstyle{plain}
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+\newtheorem{conj}{Conjecture}[section]
+\newtheorem{exmp}{Example}[section]
+
+\theoremstyle{remark}
+\newtheorem*{rem}{Remark}
+\newtheorem*{note}{Note}
+
+
+
+\begin{document}
+\section{Introduction}
+
+In the Black-Scholes-Merton model, a contingent claim is dependent on one or more tradable assets. As
+such, the randomness in the option is solely based on that of the underlying assets. The emergence of
+stochastic volatility models is inspired by the notion that the value of an option is affected not only by randomness of
+the underlying asset ${S_t}$ but also by that of the volatility of the asset's return ${V_t}$.
+Volatility is therefore not a traded asset and makes the market incomplete which have many implications on option prices.
+The Heston Model\cite{Heston} is one of the most widely used stochastic volatility models today. Its attractiveness lies in the powerful duality of its tractability and
+robustness relative to other stochastic volatility models.
+It describes a joint process between an asset's price and
+its variance, assuming that the volatility of the asset is not constant, nor even deterministic but follows a
+random process\cite{volatility}. The Heston model is known to fit data well  when there are no significant spikes or jumps in stock prices. Its robustness however allows for the incorporation jumps into the modelling framework.
+
+\section{Key Questions}
+We will be concerned with answering the following questions:
+\begin{enumerate}
+\item How does including the jump term in the Heston model affect parameter estimation in the model? 
+\item Does the jump term affect the distributions of the parameters in the model?
+\item How accurate is each of the models in pricing options? 
+\end{enumerate}
+\section{Data}
+One of the main goals of our project is pricing the oil derivatives under the Heston's model and Heston model-with-jumps.  Because of the high volume of trades associated with these particular options per day we chose WTI crude oil futures contracts CLM16 and CLJ16 as the underlying assets.
+  \\WTI: West Texas Intermediate (WTI), also known as Texas light sweet, is a grade of crude oil used as a benchmark in oil pricing. This grade is described as light because of its relatively low density, and sweet because of its low sulfur content.
+ \subsection{Data for Parameter Estimation}
+ \begin{itemize}
+\item CLM16: CLM16 is a futures contract that obligates the buyer to purchase 1000 barrels of crude oil on the 20th May 2016 and designed price. 
+\item CLJ16: CLJ16 is a future contract that obligating the buyer to purchase 1000 barrels crude oil at 21st March 2016 and designed price.
+\end{itemize}
+From \url{http://www.barchart.com/detailedquote/futures/CLM16} we downloaded the historical data for CLM16 oil futures. We also got the CLJ16 price data from \url{http://www.barchart.com/detailedquote/futures/CLJ16}.
+For each of the futures the historical data was collected from 28th March 2014 to 25th Feb 2016.
+Since our models make use of log returns we calculate the log-return of each of the futures prices as 
+$$Y_t=\ln S_t-\ln S_{t-1}$$
+\subsection{Data for Option Pricing} 
+For the oil options, we chose CLM16 and CLJ16 call options whose underlying assets are CLM16 and CLJ16 futures respectively.
+\begin{itemize}
+\item For the CLM16 options the contract's expiry date is 17th May 2016 with a time-to-maturity of 21 business days.
+ \item The CLJ16 options expired on 16th March, 2016 with a maturity period of 9 days.
+\end{itemize}
+ The benchmark date for both option prices was 7th March 2016 at 6:00pm. Also, we chose options with different strike prices, ranging from \$25 to \$55. 
+\section{Mathematizing the Problem}
+Asset pricing is volatility dependent\cite{Heston} since volatility captures the market's assessment of future uncertainty in the prices of derivatives.
+The Heston model\cite{Heston} is one of the most widely used models for the pricing of financial derivatives.
+In general, the evolution of an asset price (spot price) depends on  the growth rate of the asset's price and the volatility associated with the asset itself. The model thus assumes the spot price at time, $t$ follows the geometric brownian motion process; 
+\begin{equation}
+dS(t)=\mu S_tdt + \sqrt{v(t)} S_tdW_1(t)
+\end{equation}
+where $z_1(t)$ is a Wiener process.
+Given the assumption of stochastic volatility, the volatility of the option over time is given by the following stochastic process:
+\begin{equation}
+dv(t) = \kappa[\theta - v(t)]dt + \sigma_V \sqrt{v(t)}dW_2(t)
+\end{equation}
+where $\kappa$ is a mean-reversion speed parameter, $\theta$ is the long-run mean of the variance and $\sigma_V$ is the volatility of the variance process.
+A correlation parameter, $\rho$ is used to reflect the relationship between the asset return and volatility. Thus
+$$\rho=\text{Corr}(W_1(t),W_2(t))$$
+For simplicity, Heston assumes the interest rate is constant. 
+Asset pricing depends on the state-price density\footnote{This is the price given an asset in a particular state} of the asset \cite{Ingersoll}. In view of this, the aforementioned assumptions are still insufficient to price options because we have not made an assumption that gives the price of volatility \footnote{The volatility of the asset is assumed to be associated with a risk called the price of volatility}. Standard arbitrage arguments(\cite{Heston}\cite{Black-Scholes}) demonstrate that the value of any asset must satisfy the partial differential equation
+\begin{equation}\label{Hestonpde}
+\frac{1}{2} vS^2 \frac{d^2U}{dS^2} + \rho \sigma vS \frac{d^2U}{dSdv} + \frac{1}{2} \sigma^2v \frac{d^2U}{dv^2} + rS\frac{dU}{dS} + \{\kappa[\theta - v(t)] - \lambda (S,v,t)\}\frac{dU}{dv} - rU + \frac{dU}{dt} = 0
+\end{equation}
+Here, $U$ represents the payoff for for the option  while, $ \lambda (S,v,t) $ represents the price of volatility risk and must be independent of the particular asset\cite{Ingersoll}.
+This generates a risk premium proportional to v, $ \lambda (S,v,t) = \lambda t v$\cite{Heston}. 
+A call option with strike price K and maturing at time T satisfies the PDE in \ref {Hestonpde} subject to the following boundary conditions:
+
+\begin{align}\label{boundary}
+U(S,v,T) = \max(0, S-K) \\\nonumber
+ U(0,v,T)=0 ,\\\nonumber
+ \frac{dU}{dS} (\infty, v, t) = 1,\\\nonumber
+ rS \frac{dU}{dS} (S, 0, t)- rU(S,0,t) + U_t(S,0,t) = 0,\\\nonumber
+ U(S,\infty, t) = S\nonumber
+\end{align}
+The PDE in \ref {Hestonpde} is solved by the analogy used   to derive the Black-Scholes formula\cite{Black-Scholes}. Keeping in mind that the discounted call price is
+\begin{equation}
+C_T(K) = e^{-r\tau}  \mathbb{E}[ \max(S_T -K)]
+\end{equation}
+\begin{equation}
+C(S,v,t)=S_0P_1-Ke^{-r\tau}P_2
+\end{equation} Where $S_0$ is the spot price, $K$ is the strike price, and $\tau$ the time until expiration and :
+\begin{eqnarray}
+%\begin{split}
+P_j=\frac{1}{2}+\frac{1}{\pi}\int^\infty_0\text{Re}\Big(\frac{S^{i\theta}_0 K^{-i\phi} e^{A(\tau,\phi)+B(\tau,\phi)}}{i\phi}\Big)d\phi\label {Heston_smooth}\\
+A(\tau,\phi)=\phi i r+\frac{\kappa\theta}
+{\xi^2}\Big[(b-\phi\xi\phi i + d)
+\tau-2\ln\Big(\frac{1-ge^dr}{1-g}\Big)
+\Big]\\
+B(\tau,\theta)=\frac{b_j-\rho\xi\phi i +d}{\xi^2}\Big(\frac{1-e^{dr}}{1-ge^{dr}}\Big)
+%\end{split}
+\end{eqnarray}
+(\ref{Heston_smooth}) can be solved using the Adaptive Simpson's rule, by Adaptive Gaussian quadrature rules\cite{Heston} or by using the Fast Fourier transform\cite{volatility}. Here $P_1,P_2$ can be thought of as the probabilities of the call price being above or below the strike price\cite{Heston}.
+ We will be interested in pricing only call options since Put option prices can be found from call prices by using the put-call parity relation; that is given the price of a call $c(T,x)$ the price of a put option is given as
+\begin{equation}\label{put_price}
+p(T,x)=c(T,x)-S_0+Ke^{-r(T-t)}
+\end{equation}
+\subsection{Jump Processes}
+ In recent time, crude oil prices have exhibited sharp spikes in their returns. These spikes (or jumps) cannot be accounted for in a diffusion model with continuous paths.
+In the Heston model, the price behaves locally like a Brownian motion thus the probability that the stock moves by a large amount over a short period of time is very small, unless one fixes an unrealistically high value of volatility\cite{jumps}.
+The basic building block for jump models is the poisson process\footnote{This is a sequence of independent and indentically distributed exponential random variables $ T_1, T_2, T_3, ...T_n $, where $ T_i $ is the time before the next jump after time $ T_{i-1} $ with arrival time expressed as 
+$S_n =\sum^n_{i=1}T_i$}. The most widely used stochastic process for modelling jumps in finance is the compound poisson process(\cite{jumps},\cite{bates},\cite{disad}).
+Given a poisson process $ N_t $  with intensity, $\lambda$ the compound poisson process is given as 
+\begin{equation}
+Q_t=\sum^{N_t}_{i=1}Y_i,\quad t\geq 0.
+\end{equation}
+where $ Y_is $ are  independent and identically distributed random  variables. 
+In \cite{bates} and \cite{Merton} the $Y_is$ are allowed to follow a log-normal distribution.
+\subsection{Heston model with jumps}
+Given the dynamics described at the beginning of the section a new model according to \cite{bates} is given as
+\begin{equation}\label{BV_model}
+\begin{split}
+\frac{dS_t}{S_t}&=(r-\delta)dt+\sqrt{V_t}dW_{t_1}+dZ_t\\
+dV_t&=\kappa (\theta - V_t)dt+ \sigma_{V_t} \sqrt{V_t}dW_{t_2},
+ \\
+\rho dt&=dW_{t_1}dW_{t_2},
+\end{split}
+\end{equation}
+where $r$ is the spot interest rate and $\delta$ is the dividend paid by the asset. We notice the additional variable $Z_t$, a compound Poisson process with  independent jumps, $J$ where $$\log(1+J)\sim N(\log(1+\chi)-\frac{1}{2}\alpha^2,\alpha^2).$$
+\begin{equation}
+\mathbb{E}(1+J)=\exp\Big(\log(1+\bar{J})-\frac{\alpha^2}{2}+\frac{\alpha^2}{2}\Big)=1+\bar{J}\quad
+\therefore \mathbb{E}(J_t)=\bar{J}\nonumber.
+\end{equation} The Poisson process is assumed to be independent of the Wiener processes\cite{bates}.
+By applying arbitrage arguments as in the just discussed Heston model we have that the payoff for a call option must satisfy the pricing equation:
+\begin{equation}
+\begin{split}
+\frac{\partial U}{\partial t}+\frac{1}{2}VS^2\frac{\partial^2 U}{\partial S^2}+\frac{1}{2}\sigma^2V\frac{\partial^2 U}{\partial V^2}+\rho\theta VS\frac{\partial^2U}{\partial S\partial V}+(r-\delta-\lambda \bar{k})S\frac{\partial U}{\partial S} +\kappa(\theta-V)\frac{\partial U}{\partial V}-rc+\mathcal{I}C(S,V,t)=0
+\end{split}
+\end{equation} 
+where 
+\begin{equation}
+\begin{split}
+\mathcal{I}C(S,V,t)=\lambda\int^{+\infty}_0[C(S\xi,V,t)-C(S,V,t)]q(\xi)d\xi\\
+q(\xi)=\frac{1}{\sqrt{2\pi}\alpha\xi}\e^{-\frac{1}{2\alpha^2}(\log(\xi)-m)^2}\\
+m=\log(1+\chi)-\frac{1}{2}\alpha^2,\\
+\bar{k}=e^{\alpha^2/2+m}-1\nonumber
+\end{split}
+\end{equation} with boundary conditions as described in (\ref {boundary}).
+Also, for a  European call option we have,
+\begin{equation}
+C_T(K)=e^{-r\tau}\max(S-K,0)
+\end{equation}
+Whose closed-form solution is given as 
+\begin{equation}
+C_T(K) = e^{-rT}(FP_1-KP_2)
+\end{equation}
+where $F=S_0e^{bT},$ $b$ being the continuously compounded domestic or foreign interest rate. Also $P_2=prob^*(S_T>K)$ while $P_1=\int^\infty_K\Big[\frac{S_T}{E^*(S_T)}\Big]p^*(S_T)dS_T.$
+ 
+
+\section{Planned computations}
+\subsection{Summary} In our project we plan to:
+\begin{enumerate}
+\item calibrate both models using MCMC simulation techniques to historical market data.   Parameters in both models will be estimated and compared.
+\item  compare the distributions of each of the parameters in the models in an attempt to determine how much of an influence the jump term has on the model parameters.
+\item finally use the estimated parameters to price oil options and compare our results to actual market prices. In view of results in \cite{perform} that  suggest that the Heston model with jumps is better suited to short-term options while the plain Heston model does well for medium and long-term-options we plan to:
+\begin{itemize}
+\item price long to medium-term oil options with 21-days maturity.
+\item price short-term oil options with 9-days maturity.
+\end{itemize}
+\end{enumerate}
+We now discuss these proposed computations in more detail.
+\subsection{Parameter Estimation/Calibration}
+Parameter estimation using MCMC techniques typically involves deriving posterior (real) distributions from prior(assumed) distributions of the variables we wish to estimate. After finding a likelihood function the the Bayesian method used to  derive the posterior distribution is 
+$$ \text{Posterior distribution } = \text{ Likelihood function } \times \text{ Prior distribution.}\cite{bates}$$ Then using MCMC, we simulate the posterior distributions for the parameters. The Heston model parameters we need to estimate are: 
+$\mu,\kappa,\theta,\sigma_V$ and $\rho.$
+For the variance process $V_t,$ we only need a point estimate of the distribution.The estimate normally used is the mean(\cite{bates},\cite{perform}) which serves as a proxy for the variance when we price options. 
+
+\subsection{Posterior Distributions}
+At this point, we will summarise the Bayesian method of deriving the posterior distributions for each of the above mentioned parameters. Prior distributions are chosen based on distributions we have realised were frequently used in research that involved parameter estimation for the Heston model(\cite{bates},\cite{disad}\cite{jumps}).\newline
+\begin{enumerate}
+\item Posterior Distribution of $\mu.$\newline
+The prior distribution of $\mu$ is chosen as $\mu\sim N(\mu_0,\sigma^2_0).$ The posterior distribution of $\mu$ is thus
+\begin{equation}
+\begin{split}
+P(\mu\lvert\, Y,V,\kappa, \theta, \psi, \Omega)
+&= P(Y,V\lvert\mu,\kappa,\theta,\psi,\Omega)
+\centerdot P(\mu)\\
+&=\exp\Bigg(-\frac{1}{2\Omega}
+\Sigma^T_{t=1}[(\Omega + \psi^2)
+(\epsilon^S_t)^2-2\psi\epsilon^V_t\epsilon^S_t]
+\Bigg)\centerdot \exp\Bigg(-\frac{(\mu-\mu_0)^2}
+{2\sigma^2_0}\Bigg)
+\end{split}
+\end{equation}
+Here, $P(Y,V\lvert\mu,\kappa,\theta,\psi,\Omega)$ is the likelihood function that will be described in more detail in our work.
+After little more computation we derive that the posterior distribution for $\mu$ is $\mu\sim N(\mu^*,\sigma^{*2})$ where
+\[
+\mu ^*= \frac{\begin{split}&\Sigma^T_{t=1}((\Omega+\psi ^2)(Y_t+\frac{1}
+{2}V_{t-1}\Delta t)/\Omega V_{t-1})\\ &-\Sigma^T_{t=1}
+(\psi(V_t-\kappa\theta\Delta t -(1-\kappa\Delta t)V_{t-1})/+\Omega V_{t-1})\mu_0/\sigma^2_0\end{split}}{\Delta t \sum ^T_{t=1}((\Omega +\psi ^2)/\Omega V_{t-1}+1/\sigma ^2_0}\nonumber
+\] 
+and 
+\begin{eqnarray}
+\sigma^{*2}=\frac{1}{\Delta t \sum ^T_{t=1}((\Omega +\psi ^2)/\Omega V_{t-1}+1/\sigma ^2_0}\nonumber
+\end{eqnarray}
+
+\item Posterior Distribution of $(\kappa, \theta).$\newline
+The prior  is chosen as $\theta \sim N(\theta_0,\sigma^2_\theta)$. The posterior distribution is thus  
+ $\theta\sim N(\theta^*,\sigma^{*2}_\theta)$ where 
+\[\theta^*=\frac{\begin{split}&\Sigma^T_{t=1}((\kappa)(V_t-(1-\kappa\Delta t)V_{t-1})/\Omega V_{t-1})\\ -\Sigma^T_{t=1}&(\psi(Y_t-\mu\Delta t+\frac{1}{2}V_{t-1}\Delta t)\kappa/\Omega V_{t-1})+\theta_0/\sigma^2_\theta\end{split}}{\Delta t\sum^T_{t=1}(\kappa^2/\Omega V_{t-1})+1/\sigma^2_\theta}\] and $$\sigma^{*2}_\theta = \frac{1}{\Delta t \sum^T_{t=1}(\kappa^2/\Omega V_{t-1})+ 1/\sigma^2_\theta}.$$
+The prior of $\kappa$ is chosen as $\kappa\sim N(\kappa_0,\sigma^2_\kappa)$. The posterior distribution is given as
+$\kappa\sim N(\kappa^*,\sigma^{*2}_\kappa)$ where
+\[\kappa^*=\frac{\begin{split}&\Sigma^T_{t=1}((\theta-V_{t-1})(V_t-V_{t-1})/\Omega V_{t-1})\\ -\Sigma^T_{t=1}&(\psi(Y_t-\mu\Delta t+\frac{1}{2}V_{t-1}\Delta t)(\theta-V_{t-1})/\Omega V_{t-1})+\kappa_0/\sigma^2_\theta\end{split}}{\Delta t\sum^T_{t=1}((V_{t-1}-\theta)^2/\Omega V_{t-1})+1/\sigma^2_\kappa}\] and $$\sigma^{*2}_\kappa = \frac{1}{\Delta t \sum^T_{t=1}((V_{t-1}-\theta)^2/\Omega V_{t-1})+ 1/\sigma^2_\kappa}.$$
+\item Posterior Distribution of the variance, $V_t.$\newline
+This is given by 
+\begin{equation}
+\begin{split}
+P(V_t)= \frac{1}{V_t \Delta t}\exp \Bigg(&-\frac{1}
+{2\Omega}\frac{(\Omega+\psi^2)(\frac{1}{2}V_t
+\Delta t +Y_{t+1}-\mu \Delta t)^2}{V_t\Delta t}\\
+&-\frac{1}{2\Omega}\frac{-2\psi(\frac{1}{2}V_t\Delta t + Y_{t+1}-\mu\Delta t)(-(1-\kappa\Delta t)V_t-\kappa\theta\Delta t+V_{t+1}}{V_t\Delta t}\\
+&-\frac{1}{2\Omega}\frac{(-(1-\kappa\Delta t)V_t-\kappa\theta\Delta t+V_{t+1})^2}{V_t\Delta t}\Bigg)\\
+\times\exp\Bigg(&-\frac{1}{2\Omega}\frac{-2\psi(Y_t-\mu\Delta t+\frac{1}{2}V_{t-1}\Delta t)(V_t-\kappa\theta\Delta t-(1-\kappa\Delta t)V_{t-1})}{V_{t-1}\Delta t}\\
+&-\frac{1}{2\Omega}\frac{(V_t-\kappa\theta\Delta t-(1-\kappa \Delta t)V_{t-1})^2}{V_{t-1}\Delta t}\Bigg).\nonumber
+\end{split}
+\end{equation}
+\end{enumerate}
+
+\subsection{Parameter Estmation in the Heston-Jump model}
+Due to the traction in the Heston model estimation of most of the parameters is quite similar to the methodology already employed even after additional parameters are included in the model \cite{Heston}. As a result, estimating most of the paramters in the  Heston-jump model is fairly routine with the exception of the jump parameters $Z_t, B_t, \mu_s$ and $\sigma^2_s.$ We give a brief description of the methodology employed for estimating these. Again, the priors are chosen here based on what we realised were frequently chosen in most jump models(\cite{jumps}, \cite{bates})
+\begin{enumerate}
+\item Posterior distribution of $Z_t$, the magnitude of the jump.\\
+Assuming the prior is chosen as $Z_t \sim \mathcal{N}(\mu_S,\sigma^2_S).$ The by the same methodology described earlier the posterior is derived as $Z_t\sim\mathcal{N}(\mu^*_S,\sigma^{*2}_S)$ where
+\[
+\mu ^*_S=\frac{\begin{split}((&\Omega  +\psi ^2)(Y_t+(1/2)V_{t-1}
+\Delta t -\bar{\mu}\Delta t)/\Omega V_{t-1}\Delta t)\\
+&-(\psi(V_t-\kappa \theta\Delta t-(1-\kappa\Delta t)V_{t-1})/ \Omega V_{t-1}\Delta t) +\mu_S/ \sigma^2_S\end{split}}{(\Omega +\psi^2)/ \Omega V_{t-1}\Delta t + 1/\sigma^2_S}\nonumber
+\]
+and
+\begin{eqnarray}
+\sigma^{*2}_S=\frac{1}{(\Omega +\psi^2)/ \Omega V_{t-1}\Delta t + 1/\sigma^2_S}\nonumber
+\end{eqnarray}
+\item Posterior distribution of $\lambda_D.$
+The prior distribution for $\lambda_D$ is assigned to be $\lambda_D \sim \,\text{Beta}(\alpha^\prime,\beta ^\prime).$ We have therefore
+\begin{equation}
+\begin{split}
+P(\lambda_D\mid B)&= P(B\mid\lambda_D)\centerdot P(\lambda _D)\\
+&= \begin{pmatrix}
+T \\ \sum^T_{t=1}B_t
+\end{pmatrix} \lambda^{\sum^T_{B_{t=1}}}(1-\lambda_D)^{T-
+\sum^T_{t=1}B_t}\centerdot P(\lambda_D).\nonumber
+\end{split}
+\end{equation}
+Plugging in the density of the Beta function we get
+\begin{equation}
+ P(\lambda_D\mid B)=\begin{pmatrix}
+T \\ \sum^T_{t=1}B_t
+\end{pmatrix} \lambda^{\Sigma^T_{B_{t=1}}}(1-\lambda_D)^{T-
+\sum^T_{t=1}B_t}\centerdot \frac{\lambda^{\alpha^\prime-1}_D(1-\lambda_D)^{\beta^\prime -1}}{B(\alpha^\prime,\beta^\prime)}\nonumber
+\end{equation}
+The posterior distribution of $\lambda_D$ is therefore $\lambda_D\sim\,\text{Beta}(\alpha^*_{\lambda D},\beta^*_\lambda),$ where 
+\begin{eqnarray}
+\alpha^*_\lambda = \alpha^\prime + \Sigma^T_{t=1}B_t,\nonumber\\
+\beta^*_\lambda = \beta^\prime + T-\Sigma^T_{t=1}B_t.\nonumber
+\end{eqnarray}
+\item Posterior distributions of $\mu_S\vert \sigma^2_S\text{ and }\sigma^2_S\vert \mu_S.$
+The prior distributions are assigned so that\newline 
+$\mu_S\sim \mathcal{N}(0,S_0)\text{ and } \sigma^2_S\sim \mathcal{IG}(\alpha_S,\beta_S).$
+\begin{equation}
+\begin{split}
+P(\mu_S\vert\sigma^2_S,Z)&= P(Z\mid\mu_S,\sigma^2_S)\centerdot P(\mu_S)\nonumber\\
+&=(\sigma_S)^{-T}\exp \Bigg(-\frac{1}{2}\sum^T_{t=1}\frac{(Z_t-\mu_S)^2}{\sigma^2_S}\Bigg)\centerdot \exp\Bigg(-\frac{\mu^2_S}{2S_0}\Bigg),\nonumber
+\end{split}
+\end{equation} while
+\begin{equation}
+\begin{split}
+P(\sigma^2_S\vert \mu_S,Z)&= P(Z\vert\mu_S,\sigma^2_S)\centerdot P(\sigma^2_S)\nonumber\\
+&=(\sigma_S)^{-T}\exp \Bigg(-\frac{1}{2}\sum^T_{t=1}
+\frac{(Z_t-\mu_S)^2}{\sigma^2_S}\Bigg)\centerdot
+\frac{\beta^{\alpha_S}_S}{\Gamma(\alpha_S)}(\sigma^2_S)^{-
+\alpha_S-1} \exp\Bigg(-\frac{\beta_S}{\sigma^2_S}\Bigg)
+\nonumber
+\end{split}
+\end{equation}
+So the posterior distribution of $\mu_S\vert\sigma^2_S$ is $\mu_S\sim \mathcal{N}(\mu^*_{\mu_S},\sigma^{*2}_{\mu_S}),$ where 
+\begin{equation}
+\mu^*_{\mu_S}=\frac{\Sigma^T_{t=1}(Z_t/\sigma^2_S)}{1/S_0+\Sigma^T_{t=1}(1/\sigma^2_S)}\text{ and }\sigma^{*2}_{\mu_S}=\frac{1}{1/S_0+\Sigma^T_{t=1}(1/\sigma^2_S)}\nonumber
+\end{equation}
+and the posterior distribution of $\sigma ^2_S\vert 
+\mu_S$ is $\sigma ^2_S\sim \mathcal{IG}(\alpha^*_S,
+\beta^*_S),$ where $$\alpha^*_S=\alpha_S+T/2 \text{ and } 
+\beta^*_S=\beta_S +\frac{1}{2}\sum^T_{t=1}(Z_t-\mu_S)^2.$$
+\end{enumerate}
+
+\subsection{Simulating from the posterior distributions}
+At this point we utilize tools in MCMC to obtain draws from the posterior distributions just calculated. The process is summarized in the following steps:
+\begin{itemize}
+\item For the parameters $\{\mu,\kappa,\theta,Z_t,\lambda_D,\mu_S, \sigma_S\}$ a Gibbs sampler is used \cite{bates}. 
+The process involves mainly
+\begin{enumerate}
+\item Starting from a set $\{\mu^{(0)},\kappa^{(0)},\theta^{(0)}, V_0^{(0)},V_1^{(0)},.....,V_{T+1}^{(0)}\}$ of initial values.
+\item Finding the distribution of $\mu$ conditional upon these values to obtain a draw $\mu^{(1)}$ thus updating our initial state to $\{\mu^{(1)},\kappa^{(0)},\theta^{(0)}, V_0^{(0)},V_1^{(0)},.....,V_{T+1}^{(0)}\}.$
+\item Applying step 2 to obtain draws for  $\kappa^{(1)} \text{ and }\theta^{(1)}$ and updating the current state of the Markov chain in step 1 with each draw.
+\item The process in step 3 is repeated for $1,2,....,n$ iterations.
+\end{enumerate}
+\item For the state space $\{V_0,....,V_T\}$ a   Metropolis- Hastings approach is used\cite{bates},\cite{jumps}. This involves
+\begin{enumerate}
+\item Starting with the initial values for the 0th step; 
+$$\{V_0^{(0)},.....,V_{T+1}^{(0)}\}.$$
+\item Running the algorithm for n steps, to get
+$\{V_0^{(g)},V_1^{(g)},.....,V_{T+1}^{(g)}\},\> g\in \{1,....,n\}.$
+\item For a fixed gth step, draw from the proposal density
+ for $V_t^{(g)}$ for  $t\in \{1,....,T\}$ by the following: 
+ \[V_t^{*(g)}=V_t^{(g-1)}+\mathcal{N}_t,\quad \text{where 
+}\mathcal{N}_t\sim \mathcal{N}(0,\sigma_N^2)\] where $t\in 
+\{1,....,T\}$ and $V_t^{*(g)}$ is our proposal for
+$V_t^{(g)}.$\\
+\end{enumerate}
+\end{itemize}
+Code for implementing the just described methodology is given in the Jupyter Notebook.
+\section{Pricing options}
+
+After estimating model parameters we price European style options\footnote{These are options that can only be excercised at maturity. In contrast to these are American style options which can be excercised at any time before maturity of the option.} in both models and compare them to the true market quote as a test of accuracy of the models. 
+\subsection{Heston options}
+
+We now present the code for a call option in the Heston model.
+\subsubsection{Heston model European Call}
+In Matlab
+\begin{lstlisting}[language=matlab]
+function call = callHestoncf (S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma )
+% callHestoncf Pricing function for European calls
+% callprice = callHestoncf (S,X ,tau ,r,q,v0 ,theta ,rho ,kappa, sigma )
+% ---
+% S = spot price
+% X = strike proce
+% tau = time to maturity. This is calculated as (Number of days till expiry) /252
+% r = riskfree rate
+% q = dividend yield
+% v0 = initial variance(Determined by the initial parameter chosen in the mcmc algorithm.
+% theta = long run variance
+% rho = correlation of the brownian motion processes.
+% kappa = speed of mean reversion
+% sigma = volatility of volatility
+% ---
+%
+vP1 = 0.5 + 1/ pi * quadl(@P1 ,0 ,200 ,[] ,[] ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma );
+vP2 = 0.5 + 1/ pi * quadl(@P2 ,0 ,200 ,[] ,[] ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma );
+call = exp (-q * tau ) * S * vP1 - exp (-r * tau ) * X * vP2 ;
+end
+%
+function p = P1(om ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma )
+i=1i;
+p = real ( exp (-i* log (X)*om) .* cfHeston (om -i,S,tau ,r,q,v0 ,theta ,rho ,kappa, sigma ) ./ (i *om * S * exp ((r-q) * tau )));
+end
+%
+function p = P2(om ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma )
+i=1i;
+p = real ( exp (-i* log (X)*om) .* cfHeston (om ,S,tau ,r,q,v0 ,theta ,rho ,kappa, sigma ) ./ (i *om));
+end
+%
+function cf = cfHeston (om ,S,tau ,r,q,v0 ,theta ,rho ,kappa, sigma )
+d = sqrt (( rho * sigma * 1i*om - kappa) .^2 + sigma ^2 * (1i*om + om .^ 2));
+g2 = (kappa - rho * sigma *1i*om - d) ./ (kappa - rho * sigma *1i*om + d);
+cf1 = 1i*om .* ( log (S) + (r - q) * tau );
+cf2 = theta * kappa / ( sigma ^2) * ((kappa - rho * sigma *1i*om - d) * tau - 2 * log ((1 - g2 .*exp (-d * tau )) ./ (1 - g2)));
+cf3 = v0 / sigma ^2 * (kappa - rho * sigma *1i*om - d) .* (1 - exp (-d * tau )) ./ (1 - g2.* exp (-d * tau ));
+cf = exp ( cf1 + cf2 + cf3 );
+end  
+\end{lstlisting}
+
+Given the put-call parity expression in \ref {put_price} code for the put price is easily computed in Matlab as:
+\begin{lstlisting}
+putprice=callHestoncf(S,X,tau ,r,q,v0 ,theta ,rho ,kappa, sigma)-S+X*exp(-r*tau);
+\end{lstlisting}
+
+\subsection{Heston-Jump options}
+Adding an additional jump diffusion term to the model makes the closed-form solution a little difficult to find \cite{BV},\cite{actual}). The 'Heston-Jump model' essentially includes  a jump process, $Z_t.$ This jump process is a compound Poisson process with intensity $\lambda$ and independent jumps $J$ with 
+\begin{equation}
+\log(1+J)\sim N(\log(1+\chi)-\frac{1}{2}\alpha^2,\alpha^2)
+\end{equation}
+The parameters $\chi$ and $\alpha$ determine the distribution of the jumps and the Poisson process is assumed to be independent of the Wiener processes(\cite{actual}). The price of a European option is given as the expected value of its terminal payoff under a risk-neutral probability measure. The following code gives the price of a call option in the Heston-jump model.
+\subsubsection{Heston-Jump model European Call}
+In Matlab
+\begin{lstlisting}
+function call = callHestonJumpcf (S,X,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ ,vJ)
+% callHestonJumpcf Pricing function for European calls
+% callprice = callHestonJumpcf (S,X,tau ,r,q,v0 ,theta,rho ,kappa, sigma , lambda ,muJ ,vJ)
+% ---
+% S = spot price
+% X = strike price
+% tau = time to maturity
+% r = risk-free rate
+% q = dividend yield
+% v0 = initial variance
+% theta = long run variance
+% rho = correlation
+% kappa = speed of mean reversion
+% sigma = volatility of volatility
+% lambda = intensity of jumps
+% muJ = mean of jumps
+% vJ = variance of jumps
+% ---
+vP1 = 0.5 + 1/ pi * quadl (@P1 ,0 ,200 ,[] ,[] ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ,vJ);
+vP2 = 0.5 + 1/ pi * quadl (@P2 ,0 ,200 ,[] ,[] ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ,vJ);
+call = exp (-q * tau ) * S * vP1 - exp (-r * tau ) * X * vP2 ;
+end
+%
+function p = P1(om ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ ,vJ)
+i=1i;
+p = real ( exp (-i* log (X)*om) .* cfHestonJump (om -i,S,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ,vJ) ./ (i * om * S * exp ((r-q) * tau )));
+end
+%
+function p = P2(om ,S,X,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ ,vJ)
+i=1i;
+p = real ( exp (-i* log (X)*om) .* cfHestonJump (om ,S,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ,vJ) ./ (i * om));
+end
+%
+function cf = cfHestonJump (om ,S,tau ,r,q,v0 ,theta ,rho ,kappa,sigma , lambda ,muJ ,vJ)
+d = sqrt (( rho * sigma * 1i*om - kappa) .^2 + sigma ^2 * (1i*om + om .^ 2));
+%
+g2 = (kappa - rho * sigma *1i*om - d) ./ (kappa - rho * sigma *1i*om + d);
+%
+cf1 = 1i*om .* ( log (S) + (r - q) * tau );
+cf2 = theta * kappa / ( sigma ^2) * ((kappa - rho * sigma *1i*om - d) * tau - 2 * log ((1 - g2 .*exp (-d * tau )) ./ (1 - g2)));
+cf3 = v0 / sigma ^2 * (kappa - rho * sigma *1i*om - d) .* (1 - exp (-d * tau )) ./ (1 - g2.* exp (-d * tau ));
+% jump
+cf4 = -lambda * muJ *1i* tau *om + lambda * tau *( (1+ muJ ) .^(1i*om) .* exp ( vJ *(1i*om /2).* (1i*om -1) ) -1 );
+cf = exp ( cf1 + cf2 + cf3 + cf4 );
+end
+\end{lstlisting}
+The same put-call parity principle applies here also. Thus from \ref {put_price} for the price of a put in this model we have the following code:
+ \begin{lstlisting}
+putprice=callHestonJumpcf (S,X,tau ,r,q,v0 ,theta,rho ,kappa, sigma , lambda ,muJ ,vJ)-S+X*exp(-r*tau);
+\end{lstlisting}
+\section{Source of the code}
+In \cite{Heuristics} a number of option pricing models are calibrated to market prices including the Heston model, Heston model with jumps and the Black-Scholes-Merton model. The option pricing code is available in the appendix of this paper.\cite{bates} describes the MCMC methodology for parameter estimation in the Heston Model. We contacted them to request the code they used for the model. We later modified the code to include the jump components in the Heston-Jump model. The code presented in subsection \ref{calibration} is thus code for the jump model. The code may easily be modified to get the original Heston model parameters.
+\begin{thebibliography}{100}
+\bibitem{actual} Bates, S,D. (1996),\emph {Jumps and Stochastic Volatility: Exchange Rate processes
+Implicit in Deutchemark Options}, Review of Financial Studies 9, 69-107.
+\bibitem{comp} Bates, S,D. (2000) \emph{Post-'87 Crash Fears in the S\& P 500 Futures Option Market}, Journal of Econometrics 94:(pp 181-238).
+
+\bibitem {Black-Scholes} Black, F.,Scholes, M. (1973)\emph{Pricing of Options and Corporate Liabilities}, Journal of Political Economy, Vol 81, No.3, pp 637-654.
+\bibitem{BV} Briani, M., Ferreri, F., Natalini, R., Papi, M. (n.d) \emph{The Bates volatility model.} Premia 14.
+
+\bibitem{bates} Cape, J., Deardon, W., Gamber, W., Liebner, J., Lu, Qu., Nguyen, M.L., (2015) 
+\emph{Estimating Heston's and Bates' models parameters using Markov chain Monte Carlo simulation}. Journal of Statistical Computation and Simulation, 85:11, 2295-2314,
+Retrieved on 15th September, 2015 from 
+\url{http://dx.doi.org/10.1080/00949655.2014.926899}
+
+\bibitem{mcmc} Geyer, J., Charles. (1992). \emph{Introduction to Markov Chain Monte Carlo}. Vol. 7, No. 4 (pp 473-483). Institute of Mathematical Statistics.
+
+\bibitem {Heuristics} Gilli, M., Schumann, E. (2010)\emph{Calibrating Option Pricing Models with Heuristics}. Journal of Computational Optimization Methods in Statistics, Econometrics and Finance: COMISEF.
+\bibitem{Heston} Heston, S.L.(1993). 
+\emph{A Closed-Form Solution for Options with Stochastic
+Volatility with Applications to Bond and Currency
+Options}. Yale: Yale School of Organization and Management.
+
+%\bibitem{Lam} Lam, P.(2009). \emph{MCMC Methods: Gibbs Sampling and the Metropolis-Hastings Algorithm}(Handout Version)
+%Retrieved on 29th September, 2015 from 
+%\url{http://www.people.fas.harvard.edu/~plam/teaching.html}
+\bibitem{Ingersoll} Ingersoll, J(1987).\emph{Theory of FInancial decision making}. Studies in Financial Economics.
+
+\bibitem {Merton} Merton, Robert C.,(1967) \emph{OPtion Pricing when Underlying stock returns are discontinuous}, Journal of Financial Economics, Vol 3, No. 1-2, pp 125-144.
+\bibitem{disad} Mikhailov, S., Nogel, U.\,(n.d)\, "Heston's Stochastic volatility Model Implementation, Calibration and some Extensions"\emph{Wilmott Magazine} (n.d) (pp 74-79). Wilmott Forums.
+
+\bibitem{perform} Moyaert, T. Petitjean, M.\, (n.d) \emph{The Performance of Popular stochastic volatility option pricing models during the Subprime crisis}  Louvaine School of Management: BNP Paribas Fortis.
+
+\bibitem{jumps} Tankov, P. Voltchkova, E.\, (n.d) \emph{Jump Diffusion models: A practitioners guide}: Universite Paris 7, Universite Toulouse 1 
+
+\bibitem{volatility} Ucar, S., Kivila, L. (2009) \emph{Stochastic Volatility Models with applications to Volatility Derivatives}
+Aarhus School of Business: University of Aarhus
+
+
+\end{thebibliography}
+
+\end{document}
