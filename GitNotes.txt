@@ -1,0 +1,24 @@
+So here is what I have gathered in getting started with Github and the Github shell.
+Just so you know all I am about to say is to be done in the Gitshell. I noticed it doesnt seem to work in the normal command line.
+
+
+Anyways, after opening the Gitshell you are taken straight into your master folder into which all shit happens.
+Mine is C:\Users\USE\Documents\Github>
+
+Now you want to get access to your Github account online so you type in the exact repository url after the comman 'git clone'.
+More precisely, I would type  "git clone https://github.com/DavidWired/OnCourse
+
+"dir" tells you now what is in Github folder online.
+
+Of course I need to get into folders inside the Github folder so I need to use 'cd' to get in. Mind you "cd .." takes you a step back.
+For instance "cd Testing123" gets me inside Testing123.
+
+Now assuming I did any work I want to put up there I first have to save it in the Github folder of my choosing on my computer. This does not mean that it
+automatically appears online. After saving it in the folder and getting into the master document "git status" shows me that particular file in
+ red thus meaning it is not online. We need to add it boy!!
+
+Type "git add documentname.extension" (e.g git add ProgressReport.tex) to put it up there.
+After this typing 'git status' shows the file in green. Halleluyah.
+
+Now you want to add a commit to it to show say what changes occured so 'git commit -m Another edit of the project'
+Finally 'git push' puts all that you have done up there.
